@@ -152,11 +152,11 @@ if uploaded_file is not None:
     if run_analysis:
         if model is not None:
             with st.spinner("Analyzing image... Please wait..."):
-                # 🔥 رفع مستوى الـ conf إلى 0.40 لفلترة الشوائب الخفيفة التي يخطئ فيها النموذج
-                results = model(opencv_img, conf=0.40)[0]
+                # 🔥 نقطة المعايرة المتزنة للثقة لضبط دقة العد بين الـ 52 والـ 41
+                results = model(opencv_img, conf=0.32)[0]
                 speed_ms = results.speed.get('inference', 0.0)
                 
-                # خوارزمية ذكية لاستبعاد الخلايا الناقصة والمقطوعة عند الحواف الخارجية للصورة
+                # تصفية وفحص الماسكات المقطوعة عند حواف الإطار الخارجي بدقة بكسل واحد
                 cell_count = 0
                 if results.masks is not None:
                     h, w = opencv_img.shape[:2]
@@ -165,9 +165,9 @@ if uploaded_file is not None:
                         x_coords = mask[:, 0]
                         y_coords = mask[:, 1]
                         
-                        # تصفية الخلايا الملتصقة بإطار وحواف الصورة الخارجية (بفارق 2 بكسل) لمنع العد الزائد
-                        if (np.min(x_coords) <= 2 or np.max(x_coords) >= w - 2 or
-                            np.min(y_coords) <= 2 or np.max(y_coords) >= h - 2):
+                        # استبعاد الأجزاء المشوهة الملاصقة تماماً لحدود الصورة (1 بكسل)
+                        if (np.min(x_coords) <= 1 or np.max(x_coords) >= w - 1 or
+                            np.min(y_coords) <= 1 or np.max(y_coords) >= h - 1):
                             continue
                         
                         cell_count += 1
