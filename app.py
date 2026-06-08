@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. قاموس اللغات الاحترافي المطور
+# 2. قاموس اللغات
 LANGUAGES = {
     "English": {
         "title": "Medical Images Cell Nuclei Segmentation & Counting",
@@ -27,8 +27,8 @@ LANGUAGES = {
         "count_metric": "Total Nuclei Detected",
         "time_metric": "Inference Speed",
         "orig_view": "1. Original Image",
-        "enhanced_view": "2. Preprocessed Image (CLAHE)",
-        "pred_view": "3. YOLO11 Segmentation Output",
+        "enhanced_view": "2. Enhanced Image (Contrast & Sharpen)",
+        "pred_view": "3. YOLO11 Delineated Output",
         "no_img": "⚠️ Please upload an image first to run the analysis.",
         "success_msg": "🎉 Analysis completed successfully!"
     },
@@ -45,7 +45,7 @@ LANGUAGES = {
         "count_metric": "Tespit Edilen Çekirdek Sayısı",
         "time_metric": "Çıkarım Hızı",
         "orig_view": "1. Orijinal Görsel",
-        "enhanced_view": "2. Ön İşlenmiş Görsel (CLAHE)",
+        "enhanced_view": "2. Geliştirilmiş Görsel (Kontrast & Keskinleştirme)",
         "pred_view": "3. YOLO11 Segmentasyon Çıktısı",
         "no_img": "⚠️ Analizi çalıştırmak için lütfen önce bir görsel yükleyin.",
         "success_msg": "🎉 Analiz başarıyla tamamlandı!"
@@ -63,14 +63,13 @@ LANGUAGES = {
         "count_metric": "إجمالي النوى المكتشفة",
         "time_metric": "سرعة المعالجة الفورية",
         "orig_view": "1. الصورة المجهرية الأصلية",
-        "enhanced_view": "2. الصورة بعد المعالجة الرقمية",
-        "pred_view": "3. مخرجات تقسيم نموذج YOLO11",
+        "enhanced_view": "2. الصورة بعد التحسين والkeskinleştirme",
+        "pred_view": "3. مخرجات تقسيم نموذج YOLO11 الفخمة",
         "no_img": "⚠️ الرجاء رفع صورة مجهرية أولاً للبدء في معالجتها.",
         "success_msg": "🎉 تم التحليل بنجاح واكتشاف كافة الخلايا المتاحة!"
     }
 }
 
-# 3. إعداد شريط اللغة الجانبي وتحديد النصوص المترجمة
 if "lang" not in st.session_state:
     st.session_state.lang = "English"
 
@@ -82,10 +81,8 @@ selected_lang = st.sidebar.selectbox(
 st.session_state.lang = selected_lang
 txt = LANGUAGES[st.session_state.lang]
 
-# 4. تصميم الشريط الجانبي الأكاديمي (Sidebar)
 st.sidebar.write("---")
 st.sidebar.markdown(f"### **{txt['sidebar_header']}**")
-
 st.sidebar.info(f"""
 🏛️ **Pamukkale Üniversitesi**
 🔬 **PAU Medical AI Lab**
@@ -95,7 +92,6 @@ st.sidebar.info(f"""
 🎓 **{txt['student']}:** Mohammed Adil
 """)
 
-# تحميل نموذج YOLO11 المدرب بأمان وحفظه في الـ Cache لضمان السرعة
 @st.cache_resource
 def load_model():
     model_path = "best.pt"
@@ -108,45 +104,39 @@ def load_model():
 model = load_model()
 
 # ==========================================
-# 🛠️ دالة المعالجة الرقمية الطبية المحسنة (Image Preprocessing)
+# 🛠️ دالة تحسين ومعالجة بصرية خارقة (Sharpening & Contrast)
 # ==========================================
-def preprocess_medical_image(img_bgr):
-    """تحسين جودة وإضاءة الصورة المجهرية الطبية باستخدام فلاتر التباين التكيفية"""
-    # تحويل الصورة إلى تدرج الرمادي لتطبيق الفلاتر الطبية
+def enhance_medical_image(img_bgr):
+    """إبراز نوى الخلايا المجهرية الطبية بتباين حاد وحدود دقيقة جداً للعرض"""
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
     
-    # تطبيق هندسة CLAHE لرفع التباين وإبراز النوى الخافتة والداكنة دون حرق الصورة
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    # تحسين التباين التكيفي بشكل متزن لعدم حرق الألوان
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     cl_img = clahe.apply(gray)
     
-    # استخدام فلتر غاوسي خفيف جداً لتنعيم الخلفية وإزالة النقاط المشوهة (Noise)
-    blurred = cv2.GaussianBlur(cl_img, (3, 3), 0)
+    # مصفوفة فلتر كشف الحواف والkeskinleştirme (Sharpening Kernel) لإضاءة الحدود
+    kernel = np.array([[0, -1, 0], 
+                       [-1, 5, -1], 
+                       [0, -1, 0]])
+    sharpened = cv2.filter2D(cl_img, -1, kernel)
     
-    # إعادة تحويلها لـ RGB لتتوافق مع نظام عرض الألوان
-    return cv2.cvtColor(blurred, cv2.COLOR_GRAY2RGB)
+    return cv2.cvtColor(sharpened, cv2.COLOR_GRAY2RGB)
 
-
-# 5. تصميم الجسم الرئيسي للواجهة (Main Content)
+# 5. تصميم الجسم الرئيسي للواجهة
 st.markdown("<h2 style='text-align: center; color: #1f538d;'>PAMUKKALE ÜNİVERSİTESİ</h2>", unsafe_allow_html=True)
 st.title(txt["title"])
 st.caption(txt["subtitle"])
 st.write("---")
 
-# صندوق رفع الملفات
 uploaded_file = st.file_uploader(txt["upload_label"], type=["png", "jpg", "jpeg", "tif", "tiff"])
 
 if uploaded_file is not None:
-    # قراءة الصورة المرفوعة
     file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
     opencv_img = cv2.imdecode(file_bytes, 1)
     
-    # تحويل الصورة الأصلية للعرض المباشر
     orig_image = cv2.cvtColor(opencv_img, cv2.COLOR_BGR2RGB)
+    enhanced_image = enhance_medical_image(opencv_img)
     
-    # تطبيق دالة المعالجة الطبية الرقمية المتطورة
-    enhanced_image = preprocess_medical_image(opencv_img)
-    
-    # حجز الأعمدة الثلاثة لعرض المقارنة الحية والمبهرة للجنة المناقشة
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -157,20 +147,18 @@ if uploaded_file is not None:
         st.subheader(txt["enhanced_view"])
         st.image(enhanced_image, use_container_width=True)
         
-    # زر تشغيل التوقع والتحليل بالذكاء الاصطناعي
     run_analysis = st.button(txt["analyze_btn"], type="primary", use_container_width=True)
     
     if run_analysis:
         if model is not None:
             with st.spinner("Analyzing image... Please wait..."):
-                # تشغيل التوقع الفوري (نقوم بتمرير الصورة الأصلية أو المعالجة حسب رغبتك، النموذج يفضل الأصلية لو تم تدريبه عليها)
+                # 🔥 التعديل الجوهري: نمرر الصورة الأصلية للنموذج ليحافظ على دقة الـ Segmentation والعد الحقيقي
                 results = model(opencv_img, conf=0.25)[0]
                 
-                # حساب الإحصائيات الفورية
                 cell_count = len(results.masks) if results.masks is not None else 0
                 speed_ms = results.speed.get('inference', 0.0)
                 
-                # رسم مخرجات الـ Segmentation الفخمة وعزل العناوين لرؤية النوى المحددة بدقة
+                # رسم الأقنعة الأصلية الدقيقة دون صناديق أو تسميات مشوشة
                 annotated_frame = results.plot(labels=False, boxes=False)
                 pred_image = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
                 
@@ -178,7 +166,6 @@ if uploaded_file is not None:
                 st.subheader(txt["pred_view"])
                 st.image(pred_image, use_container_width=True)
                 
-            # عرض لوحة البيانات والنجاح التلقائي
             st.success(txt["success_msg"])
             st.write(f"### {txt['results_header']}")
             
@@ -186,4 +173,4 @@ if uploaded_file is not None:
             m1.metric(label=txt["count_metric"], value=f"🎯 {cell_count}")
             m2.metric(label=txt["time_metric"], value=f"⚡ {speed_ms:.1f} ms")
         else:
-            st.error("Model 'best.pt' could not be loaded. Please ensure it is present in the repository.")
+            st.error("Model 'best.pt' could not be loaded.")
