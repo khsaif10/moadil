@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. قاموس اللغات
+# 2. قاموس اللغات الاحترافي المطور
 LANGUAGES = {
     "English": {
         "title": "Medical Images Cell Nuclei Segmentation & Counting",
@@ -63,7 +63,7 @@ LANGUAGES = {
         "count_metric": "إجمالي النوى المكتشفة",
         "time_metric": "سرعة المعالجة الفورية",
         "orig_view": "1. الصورة المجهرية الأصلية",
-        "enhanced_view": "2. الصورة بعد التحسين والkeskinleştirme",
+        "enhanced_view": "2. الصورة بعد التحسين البصري الحاد",
         "pred_view": "3. مخرجات تقسيم نموذج YOLO11 الفخمة",
         "no_img": "⚠️ الرجاء رفع صورة مجهرية أولاً للبدء في معالجتها.",
         "success_msg": "🎉 تم التحليل بنجاح واكتشاف كافة الخلايا المتاحة!"
@@ -152,11 +152,25 @@ if uploaded_file is not None:
     if run_analysis:
         if model is not None:
             with st.spinner("Analyzing image... Please wait..."):
-                # 🔥 التعديل الجوهري: نمرر الصورة الأصلية للنموذج ليحافظ على دقة الـ Segmentation والعد الحقيقي
-                results = model(opencv_img, conf=0.25)[0]
-                
-                cell_count = len(results.masks) if results.masks is not None else 0
+                # 🔥 رفع مستوى الـ conf إلى 0.40 لفلترة الشوائب الخفيفة التي يخطئ فيها النموذج
+                results = model(opencv_img, conf=0.40)[0]
                 speed_ms = results.speed.get('inference', 0.0)
+                
+                # خوارزمية ذكية لاستبعاد الخلايا الناقصة والمقطوعة عند الحواف الخارجية للصورة
+                cell_count = 0
+                if results.masks is not None:
+                    h, w = opencv_img.shape[:2]
+                    
+                    for mask in results.masks.xy:
+                        x_coords = mask[:, 0]
+                        y_coords = mask[:, 1]
+                        
+                        # تصفية الخلايا الملتصقة بإطار وحواف الصورة الخارجية (بفارق 2 بكسل) لمنع العد الزائد
+                        if (np.min(x_coords) <= 2 or np.max(x_coords) >= w - 2 or
+                            np.min(y_coords) <= 2 or np.max(y_coords) >= h - 2):
+                            continue
+                        
+                        cell_count += 1
                 
                 # رسم الأقنعة الأصلية الدقيقة دون صناديق أو تسميات مشوشة
                 annotated_frame = results.plot(labels=False, boxes=False)
